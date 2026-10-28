@@ -1,11 +1,9 @@
-# Club Master Martini - Aplicación Móvil de Capacitación Técnica y Relacionamiento B2B
-**Asignatura:** DSY1105 Desarrollo de Aplicaciones Móviles · Duoc UC  
+# Club Master Martini - Aplicación Móvil de Capacitación Técnica y Relacionamiento B2B 
 **Socio Formador:** Master Martini Chile SPA (Unigrà)  
-**Evaluación 2 (Eva 2)**
 
 ---
 
-## 📱 Descripción del Proyecto
+## Descripción del Proyecto
 
 Aplicación móvil nativa en **Android (Kotlin + Jetpack Compose Material 3)** diseñada para conectar a panaderos, pasteleros, chocolateros y profesionales gastronómicos con contenidos técnicos de alto valor y con el catálogo oficial de insumos de **Master Martini Chile SPA** (Caravella, Decor Up, Máster Melange, FiorFiore, Ariba).
 
@@ -17,7 +15,7 @@ La aplicación resuelve de forma concreta la necesidad del socio formador de:
 
 ---
 
-## 🚀 Requerimientos Evaluación 2 Implementados
+## Requerimientos Evaluación 2 Implementados
 
 | Requerimiento | Archivo / Componente | Descripción |
 | :--- | :--- | :--- |
@@ -31,7 +29,7 @@ La aplicación resuelve de forma concreta la necesidad del socio formador de:
 
 ---
 
-## 🎨 Identidad visual y contenido
+## Identidad visual y contenido
 
 - **Pantallas nuevas:** Splash, Login con hero fotográfico y acceso rápido por rubro, Home con saludo y lección destacada, y **Vista Marketing** (Perfil > "Ver panel de marketing") con leads por rubro, muestras por estado y videos más vistos. Sus cifras son de demostración y la pantalla lo avisa.
 - **Foto del login:** fotografía de Unsplash (licencia Unsplash, uso libre), incluida en `res/drawable-nodpi/login_hero.jpg`. Reemplazable por una foto propia de producto.
@@ -44,7 +42,7 @@ La aplicación resuelve de forma concreta la necesidad del socio formador de:
 - **Pendiente de autorización:** el uso de logo y videos del socio formador debe quedar registrado como "depurado y autorizado" según el caso. La app no incluye el archivo del logo. Tono sobrio y corporativo: sin recursos folclóricos ni adornos de bandera.
 - **Por validar con el socio:** líneas Ariba, Decor Up, FiorFiore y Mirall (vienen del informe, no del canal).
 
-## 🛠️ Credenciales de Prueba (Demo Rápida)
+## Credenciales de Prueba (Demo Rápida)
 
 Para comodidad del docente o evaluador, la pantalla de Login incluye botones de 1 toque para autocompletar credenciales:
 
@@ -59,7 +57,7 @@ Para comodidad del docente o evaluador, la pantalla de Login incluye botones de 
 
 ---
 
-## 🗄️ Arquitectura Backend & Supabase
+## Arquitectura Backend & Supabase
 
 En cumplimiento de la pauta de evaluación (*"https://supabase.com/ posible BD, otra opcion de AWS"*):
 
@@ -69,7 +67,7 @@ En cumplimiento de la pauta de evaluación (*"https://supabase.com/ posible BD, 
 
 ---
 
-## 📦 Compilación y Generación del APK
+## Compilación y Generación del APK
 
 El proyecto fue compilado y verificado con éxito:
 
