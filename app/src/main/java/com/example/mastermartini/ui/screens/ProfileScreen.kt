@@ -1,5 +1,27 @@
 package com.example.mastermartini.ui.screens
 
+import androidx.compose.material3.MaterialTheme
+import com.example.mastermartini.data.ProfilePhotoStore
+import coil.request.ImageRequest
+import coil.request.CachePolicy
+import coil.compose.AsyncImage
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.clip
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import android.widget.Toast
+import android.content.ActivityNotFoundException
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.ui.res.painterResource
@@ -83,6 +105,19 @@ fun ProfileScreen(
     onNavigateBack: () -> Unit
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
+
+    // Foto de perfil: galería (selector de fotos) o cámara del sistema; ninguna pide permisos
+    val context = LocalContext.current
+    val photoStore = remember { ProfilePhotoStore(context.applicationContext) }
+    var photoVersion by remember { mutableIntStateOf(0) }
+    var showPhotoSheet by remember { mutableStateOf(false) }
+    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null && photoStore.saveFrom(user.email, uri)) photoVersion++
+    }
+    val takePhoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
+        if (saved && photoStore.saveFrom(user.email, photoStore.cameraUri())) photoVersion++
+        photoStore.clearCameraTemp()
+    }
     var showLogoutConfirm by remember { mutableStateOf(false) }
     var largeTextMode by remember { mutableStateOf(user.largeTextEnabled) }
 
@@ -141,20 +176,7 @@ fun ProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MartiniGreen,
-                            modifier = Modifier.size(60.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text(
-                                    text = user.name.take(2).uppercase(),
-                                    color = MartiniGold,
-                                    fontSize = 22.sp,
-                                    fontWeight = FontWeight.ExtraBold
-                                )
-                            }
-                        }
+                        ProfileAvatar(user, photoStore, photoVersion) { showPhotoSheet = true }
 
                         Spacer(modifier = Modifier.width(14.dp))
 
@@ -460,6 +482,30 @@ fun ProfileScreen(
     }
 
     // Modal para Editar Perfil
+    if (showPhotoSheet) {
+        PhotoSheet(
+            hasPhoto = photoStore.has(user.email),
+            onGallery = {
+                showPhotoSheet = false
+                pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            },
+            onCamera = {
+                showPhotoSheet = false
+                try {
+                    takePhoto.launch(photoStore.cameraUri())
+                } catch (e: ActivityNotFoundException) {
+                    Toast.makeText(context, "Este teléfono no tiene una app de cámara disponible.", Toast.LENGTH_LONG).show()
+                }
+            },
+            onRemove = {
+                showPhotoSheet = false
+                photoStore.delete(user.email)
+                photoVersion++
+            },
+            onDismiss = { showPhotoSheet = false }
+        )
+    }
+
     if (showEditDialog) {
         var editName by remember { mutableStateOf(user.name) }
         var editPhone by remember { mutableStateOf(user.phone) }
@@ -599,5 +645,93 @@ private fun ProfileInfoRow(
             Text(text = title, fontSize = 12.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
             Text(text = if (value.isBlank()) "No especificado" else value, fontSize = 14.sp, color = TextPrimary, fontWeight = FontWeight.SemiBold)
         }
+    }
+}
+
+@Composable
+private fun ProfileAvatar(user: User, store: ProfilePhotoStore, version: Int, onClick: () -> Unit) {
+    val context = LocalContext.current
+    val hasPhoto = remember(version, user.email) { store.has(user.email) }
+    Box(
+        modifier = Modifier
+            .size(76.dp)
+            .clickable(role = Role.Button, onClickLabel = "Cambiar foto de perfil") { onClick() }
+    ) {
+        Box(
+            modifier = Modifier.align(Alignment.Center).size(68.dp).clip(CircleShape).background(MartiniGreen),
+            contentAlignment = Alignment.Center
+        ) {
+            if (hasPhoto) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(store.file(user.email))
+                        // la foto cambia en el mismo archivo: la versión distingue la petición (si no, Coil reutiliza
+                        // la imagen ya dibujada) y sin caché se lee siempre el archivo nuevo
+                        .setParameter("version", version)
+                        .memoryCachePolicy(CachePolicy.DISABLED)
+                        .diskCachePolicy(CachePolicy.DISABLED)
+                        .build(),
+                    contentDescription = "Foto de perfil de ${user.name}",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Text(
+                    text = user.name.take(2).uppercase(),
+                    color = MartiniGold,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+        }
+        Surface(
+            shape = CircleShape,
+            color = MartiniGold,
+            modifier = Modifier.align(Alignment.BottomEnd).size(28.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.CameraAlt, contentDescription = null, tint = MartiniGreenDark, modifier = Modifier.size(16.dp))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PhotoSheet(
+    hasPhoto: Boolean,
+    onGallery: () -> Unit,
+    onCamera: () -> Unit,
+    onRemove: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = Color.White) {
+        Column(Modifier.padding(bottom = 24.dp)) {
+            Text(
+                "Foto de perfil",
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+            )
+            PhotoSheetRow(Icons.Default.PhotoLibrary, "Elegir de la galería", MartiniGreen, onGallery)
+            PhotoSheetRow(Icons.Default.CameraAlt, "Tomar foto", MartiniGreen, onCamera)
+            if (hasPhoto) PhotoSheetRow(Icons.Default.Delete, "Quitar foto", ErrorRed, onRemove)
+        }
+    }
+}
+
+@Composable
+private fun PhotoSheetRow(icon: ImageVector, label: String, tint: Color, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clickable(role = Role.Button) { onClick() }
+            .padding(horizontal = 24.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = null, tint = tint)
+        Spacer(Modifier.width(16.dp))
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = TextPrimary)
     }
 }

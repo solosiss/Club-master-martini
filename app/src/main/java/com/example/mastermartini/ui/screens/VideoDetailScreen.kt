@@ -1,5 +1,12 @@
 package com.example.mastermartini.ui.screens
 
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.animateFloatAsState
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.animation.core.tween
+import com.example.mastermartini.util.shareLesson
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.runtime.setValue
@@ -95,6 +102,8 @@ fun VideoDetailScreen(
 ) {
     val context = LocalContext.current
     var playerVisible by remember { mutableStateOf(false) }
+    // false hasta que YouTube avisa que el video está reproduciéndose: mientras, se ve la miniatura y no el negro de carga
+    var playerReady by remember(lesson.id) { mutableStateOf(false) }
     var showSampleDialogForProduct by remember { mutableStateOf<Product?>(null) }
     var sampleSuccessMessage by remember { mutableStateOf<String?>(null) }
     var showPdfInfoDialog by remember { mutableStateOf<Product?>(null) }
@@ -127,17 +136,10 @@ fun VideoDetailScreen(
                             tint = if (isFavorite) MartiniGold else Color.White
                         )
                     }
-                    IconButton(onClick = {
-                        val sendIntent = Intent().apply {
-                            action = Intent.ACTION_SEND
-                            putExtra(Intent.EXTRA_TEXT, "Mira esta clase técnica de Master Martini: ${lesson.title}\nhttps://mastermartini.cl/cursos/${lesson.id}")
-                            type = "text/plain"
-                        }
-                        context.startActivity(Intent.createChooser(sendIntent, "Compartir clase con mi equipo"))
-                    }) {
+                    IconButton(onClick = { shareLesson(context, lesson) }) {
                         Icon(
                             imageVector = Icons.Default.Share,
-                            contentDescription = "Compartir",
+                            contentDescription = "Compartir receta",
                             tint = Color.White
                         )
                     }
@@ -176,6 +178,7 @@ fun VideoDetailScreen(
                                 if (debuggable) WebView.setWebContentsDebuggingEnabled(true)
                                 webChromeClient = object : WebChromeClient() {
                                     override fun onConsoleMessage(m: android.webkit.ConsoleMessage): Boolean {
+                                        if (m.message() == "MM_PLAYING") playerReady = true
                                         if (debuggable) android.util.Log.d("YouTubePlayer", "${m.messageLevel()}: ${m.message()} (${m.sourceId()}:${m.lineNumber()})")
                                         return super.onConsoleMessage(m)
                                     }
@@ -206,10 +209,25 @@ fun VideoDetailScreen(
                                     </head>
                                     <body>
                                         <iframe
-                                            src="https://www.youtube-nocookie.com/embed/${lesson.youtubeVideoId}?autoplay=1&controls=1&playsinline=1&rel=0&origin=$origin"
+                                            src="https://www.youtube-nocookie.com/embed/${lesson.youtubeVideoId}?autoplay=1&controls=1&playsinline=1&rel=0&enablejsapi=1&origin=$origin"
                                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                             allowfullscreen>
                                         </iframe>
+                                        <script>
+                                            // Pide a YouTube los cambios de estado y avisa al app por consola cuando empieza a reproducir
+                                            var f = document.querySelector('iframe');
+                                            window.addEventListener('message', function (e) {
+                                                if (String(e.origin).indexOf('youtube') < 0) return;
+                                                try {
+                                                    var d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+                                                    var st = d.event === 'onStateChange' ? d.info : (d.info && d.info.playerState);
+                                                    if (st === 1) console.log('MM_PLAYING');
+                                                } catch (x) {}
+                                            });
+                                            f.addEventListener('load', function () {
+                                                f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), '*');
+                                            });
+                                        </script>
                                     </body>
                                     </html>
                                 """.trimIndent()
@@ -218,6 +236,19 @@ fun VideoDetailScreen(
                         },
                         modifier = Modifier.fillMaxSize()
                     )
+                    // Hasta que empiece el video: la miniatura con un indicador de carga, sin parpadeo negro
+                    val coverAlpha by animateFloatAsState(if (playerReady) 0f else 1f, tween(300), label = "portada")
+                    if (coverAlpha > 0f) {
+                        Box(
+                            Modifier.matchParentSize().graphicsLayer { alpha = coverAlpha },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            LessonThumbnail(lesson, Modifier.fillMaxSize())
+                            CircularProgressIndicator(color = MartiniGold, modifier = Modifier.size(48.dp))
+                        }
+                    }
+                    // Si YouTube no avisa (sin red o sin respuesta), la capa no se queda para siempre
+                    LaunchedEffect(lesson.id) { delay(6000); playerReady = true }
                 } else {
                     // Miniatura oficial con botón grande; el video carga solo al tocar (ahorra datos)
                     LessonThumbnail(lesson, Modifier.fillMaxSize())

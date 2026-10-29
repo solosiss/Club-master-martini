@@ -1,5 +1,7 @@
 package com.example.mastermartini.ui.screens
 
+import androidx.compose.material.icons.filled.Mic
+import com.example.mastermartini.ui.components.rememberVoiceSearch
 import com.example.mastermartini.ui.components.StatusBarScrim
 import androidx.compose.material.icons.filled.FavoriteBorder
 import com.example.mastermartini.data.model.SampleRequest
@@ -105,6 +107,7 @@ fun HomeScreen(
     var selectedType by remember { mutableStateOf<BusinessType?>(null) }
     var showNotices by remember { mutableStateOf(false) }
     val searchFocus = remember { FocusRequester() }
+    val startVoice = rememberVoiceSearch { searchQuery = it }
     val pendingSamples = sampleRequests.filter { it.status != "Despachada" }
 
     val filteredLessons = lessons.filter { lesson ->
@@ -236,6 +239,11 @@ fun HomeScreen(
                             placeholder = { Text("Buscar", fontSize = 16.sp, color = TextSecondary) },
                             leadingIcon = {
                                 Icon(Icons.Default.Search, contentDescription = null, tint = MartiniGreen)
+                            },
+                            trailingIcon = {
+                                IconButton(onClick = startVoice, modifier = Modifier.size(56.dp)) {
+                                    Icon(Icons.Default.Mic, contentDescription = "Buscar por voz", tint = MartiniGreen)
+                                }
                             },
                             modifier = Modifier.fillMaxWidth().height(56.dp).focusRequester(searchFocus),
                             shape = RoundedCornerShape(28.dp),

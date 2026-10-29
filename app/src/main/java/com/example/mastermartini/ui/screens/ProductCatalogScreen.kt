@@ -1,5 +1,8 @@
 package com.example.mastermartini.ui.screens
 
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.filled.Mic
+import com.example.mastermartini.ui.components.rememberVoiceSearch
 import com.example.mastermartini.ui.components.StatusBarScrim
 import com.example.mastermartini.ui.components.BrandHeader
 import androidx.compose.ui.res.painterResource
@@ -68,6 +71,7 @@ fun ProductCatalogScreen(
     onNavigateBack: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    val startVoice = rememberVoiceSearch { searchQuery = it }
     var selectedCategory by remember { mutableStateOf("Todos") }
     var sampleProductDialog by remember { mutableStateOf<Product?>(null) }
     var sampleSuccessMessage by remember { mutableStateOf<String?>(null) }
@@ -109,6 +113,11 @@ fun ProductCatalogScreen(
                         onValueChange = { searchQuery = it },
                         placeholder = { Text("Buscar insumos (Caravella, Decor Up, FiorFiore...)", fontSize = 14.sp) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MartiniGreen) },
+                        trailingIcon = {
+                            IconButton(onClick = startVoice, modifier = Modifier.size(56.dp)) {
+                                Icon(Icons.Default.Mic, contentDescription = "Buscar por voz", tint = MartiniGreen)
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(10.dp),
                         singleLine = true,

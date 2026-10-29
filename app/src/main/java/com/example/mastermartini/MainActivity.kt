@@ -1,5 +1,8 @@
 package com.example.mastermartini
 
+import com.example.mastermartini.data.ProfilePhotoStore
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import com.example.mastermartini.ui.components.rememberAnimationsEnabled
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.Crossfade
@@ -67,6 +70,10 @@ fun ClubMasterMartiniApp(repository: MasterMartiniRepository) {
     }
     var currentMainTab by remember { mutableIntStateOf(0) }
     var loginError by remember { mutableStateOf<String?>(null) }
+
+    // Borra fotos de perfil de usuarios que ya no existen (registrados en una sesión anterior)
+    val appContext = LocalContext.current.applicationContext
+    LaunchedEffect(Unit) { ProfilePhotoStore(appContext).cleanOrphans(repository.knownEmails()) }
     var sampleRequestsState by remember { mutableStateOf(repository.getSampleRequests()) }
 
     // Manejador del botón Atrás del sistema Android

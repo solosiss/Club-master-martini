@@ -118,6 +118,9 @@ class MasterMartiniRepository internal constructor() {
         return Result.success(user)
     }
 
+    /** Correos de las cuentas que existen ahora; sirve para borrar fotos de usuarios que ya no están. */
+    fun knownEmails(): Set<String> = accounts.keys.toSet()
+
     fun getCurrentUser(): User? = sessionEmail?.let { accounts[it]?.first }
 
     fun updateUser(user: User) {
