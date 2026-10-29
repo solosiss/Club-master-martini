@@ -130,8 +130,10 @@ fun LoginScreen(
                     Brush.verticalGradient(
                         0f to HeroBackdrop,
                         0.42f to HeroBackdrop,
-                        0.7f to HeroBackdrop.copy(alpha = 0f),
-                        0.84f to Color.Transparent,
+                        0.68f to HeroBackdrop.copy(alpha = 0f),
+                        // la base de la foto se oscurece donde cae el titular, para que se lea
+                        0.78f to HeroBackdrop.copy(alpha = 0.55f),
+                        0.9f to MartiniGreen.copy(alpha = 0.92f),
                         1f to MartiniGreen
                     )
                 )
@@ -145,7 +147,7 @@ fun LoginScreen(
                 Reveal(0) {
                     Text(
                         "BIENVENIDO AL",
-                        fontSize = 13.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 3.sp,
                         color = MartiniGold

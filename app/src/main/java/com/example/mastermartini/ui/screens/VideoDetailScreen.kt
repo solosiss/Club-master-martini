@@ -78,6 +78,9 @@ import com.example.mastermartini.ui.theme.MartiniGold
 import com.example.mastermartini.ui.theme.TextPrimary
 import com.example.mastermartini.ui.theme.TextSecondary
 
+/** Alto del reproductor; también se escribe en el HTML del WebView (en px). */
+private val PlayerHeight = 230.dp
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VideoDetailScreen(
@@ -156,7 +159,7 @@ fun VideoDetailScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(230.dp)
+                    .height(PlayerHeight)
                     .background(Color.Black)
             ) {
                 if (playerVisible) {
@@ -168,21 +171,49 @@ fun VideoDetailScreen(
                                 settings.javaScriptEnabled = true
                                 settings.mediaPlaybackRequiresUserGesture = false
                                 settings.domStorageEnabled = true
-                                webChromeClient = WebChromeClient()
-                                webViewClient = WebViewClient()
+                                // Solo en depuración: errores del reproductor en Logcat (filtro "YouTubePlayer") y chrome://inspect
+                                val debuggable = (ctx.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+                                if (debuggable) WebView.setWebContentsDebuggingEnabled(true)
+                                webChromeClient = object : WebChromeClient() {
+                                    override fun onConsoleMessage(m: android.webkit.ConsoleMessage): Boolean {
+                                        if (debuggable) android.util.Log.d("YouTubePlayer", "${m.messageLevel()}: ${m.message()} (${m.sourceId()}:${m.lineNumber()})")
+                                        return super.onConsoleMessage(m)
+                                    }
+                                }
+                                webViewClient = object : WebViewClient() {
+                                    override fun onReceivedError(view: WebView?, request: android.webkit.WebResourceRequest?, error: android.webkit.WebResourceError?) {
+                                        if (debuggable) android.util.Log.d("YouTubePlayer", "Error de red: ${request?.url} -> ${error?.description}")
+                                    }
+                                    override fun onReceivedHttpError(view: WebView?, request: android.webkit.WebResourceRequest?, errorResponse: android.webkit.WebResourceResponse?) {
+                                        if (debuggable) android.util.Log.d("YouTubePlayer", "HTTP ${errorResponse?.statusCode}: ${request?.url}")
+                                    }
+                                }
+                                // YouTube rechaza (error 152-4) a quien se hace pasar por youtube.com y exige un
+                                // origen propio (error 153 si falta): se usa el nombre del paquete de la app
+                                val origin = "https://" + ctx.packageName
+                                // El alto va en px: en este WebView height:100% y 100vh se resuelven a 0, y el iframe de YouTube
+                                // quedaba de 0 px de alto (el video sonaba pero no se veía)
+                                val h = PlayerHeight.value.toInt()
                                 val htmlData = """
                                     <!DOCTYPE html>
                                     <html>
-                                    <body style="margin:0;padding:0;background-color:#000;display:flex;align-items:center;justify-content:center;height:100vh;">
-                                        <iframe width="100%" height="100%" 
-                                            src="https://www.youtube-nocookie.com/embed/${lesson.youtubeVideoId}?autoplay=1&controls=1" 
-                                            frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                    <head>
+                                        <meta name="viewport" content="width=device-width, initial-scale=1">
+                                        <style>
+                                            html, body { margin: 0; padding: 0; width: 100%; height: ${h}px; background: #000; overflow: hidden; }
+                                            iframe { position: absolute; top: 0; left: 0; width: 100%; height: ${h}px; border: 0; }
+                                        </style>
+                                    </head>
+                                    <body>
+                                        <iframe
+                                            src="https://www.youtube-nocookie.com/embed/${lesson.youtubeVideoId}?autoplay=1&controls=1&playsinline=1&rel=0&origin=$origin"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                             allowfullscreen>
                                         </iframe>
                                     </body>
                                     </html>
                                 """.trimIndent()
-                                loadDataWithBaseURL("https://www.youtube.com", htmlData, "text/html", "utf-8", null)
+                                loadDataWithBaseURL("$origin/", htmlData, "text/html", "utf-8", null)
                             }
                         },
                         modifier = Modifier.fillMaxSize()
